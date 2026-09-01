@@ -1,0 +1,8 @@
+{
+  "name": "todo",
+  "version": "1.0.0",
+  "dependencies": [
+    "sqlite3",
+    "boost-program-options"
+  ]
+}

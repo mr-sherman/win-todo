@@ -1,0 +1,9 @@
+vcpkg_installed
+launch.json
+settings.json
+build
+build-*
+.vscode
+*.sqlite
+*.sarif
+CMakeUserPresets.json
