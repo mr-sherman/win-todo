@@ -96,8 +96,8 @@ namespace todo {
 
     todo_list todo_list_db::get_open_items()
     {
-        std::string sel_cmd = "SELECT task_number, task_text, created_time FROM todolist WHERE task_number > 0";
-        
+        std::string sel_cmd = "SELECT rowid, task_number, task_text, created_time FROM todolist WHERE task_number > 0";
+
         sqlitepp::query q(_db, sel_cmd);
         sqlitepp::result res = q.store();
 
@@ -106,11 +106,28 @@ namespace todo {
         for (int i = 0 ; i < res.num_rows(); ++i)
         {
             list.push_back(
-                item_entry( (int)res[i]["task_number"], 
-                            res[i]["task_text"], 
-                            res[i]["created_time"]));
+                item_entry( (int)res[i]["task_number"],
+                            res[i]["task_text"],
+                            res[i]["created_time"],
+                            (long long)res[i]["rowid"]));
         }
         return list;
+    }
+
+    int todo_list_db::resolve_by_rowid(long long row_id)
+    {
+        sqlitepp::query sel(_db);
+        sel << "SELECT task_number FROM todolist WHERE rowid = " << row_id;
+        sqlitepp::result res = sel.store();
+
+        if (res.num_rows() == 0)
+            return 1; // no such row (already deleted, or never existed)
+
+        int current_task_number = (int)res[0]["task_number"];
+        if (current_task_number <= 0)
+            return 0; // already resolved; nothing to do
+
+        return resolve_list_entry(current_task_number);
     }
 
     int todo_list_db::resolve_list_entry(int task_number)

@@ -44,6 +44,29 @@ Delete the task.
 
 Note that there is a difference between `complete` and `delete`. Complete will keep the task in the database as complete for reporting purposes. Delete will remove it from the database and cannot be retrieved later for reporting purposes. Complete should be used for tasks that are done. Delete should be used for tasks that are abandoned.
 
+### Export / Import
+
+```sh
+todo export <file>
+```
+Writes all open items to `<file>` as a markdown checklist:
+
+```markdown
+## Things to do for 2026-09-01
+
+- [ ] buy milk <!-- id:1 -->
+- [ ] write report <!-- id:2 -->
+```
+
+The `<!-- id:N -->` comment is invisible in any markdown viewer/renderer — it's how `import` maps a checked box back to the right database row. `N` is the row's stable SQLite rowid, not the task number shown by `list` (which shifts around every time something is completed or deleted), so checking boxes and importing works correctly no matter how many other tasks have been completed in the meantime, and importing the same file twice is harmless (already-closed items are silently skipped).
+
+```sh
+todo import <file>
+```
+Reads `<file>` as a markdown checklist and closes (marks complete) every item checked with `[x]` or `[X]`. Unchecked items are left alone. A checked item with no `<!-- id:N -->` comment (e.g. a checklist you wrote by hand rather than one `todo export` produced) can't be mapped to a database row, so it's reported to stderr and skipped rather than guessed at.
+
+The intended workflow is `todo export todo.md`, check off what you finished in your editor, then `todo import todo.md`.
+
 ## Implementation
 
 ### Dependencies

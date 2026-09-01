@@ -14,6 +14,8 @@ I kick it old school.
 #include "todo_list.hpp"
 #include <cstdlib>
 #include <sstream>
+#include <fstream>
+#include <regex>
 #include "todo_utils.hpp"
 
 
@@ -33,6 +35,54 @@ fs::path user_home_directory() {
     const char* env = std::getenv("HOME");
 #endif
     return env != nullptr ? fs::path(env) : fs::path();
+}
+
+// Matches a markdown checklist line, e.g. "- [x] buy milk <!-- id:3 -->".
+// Group 1 is the mark inside the brackets, group 2 is the item text
+// (unused), group 3 is the row id from the id comment, if present.
+const std::regex checklist_line_re(
+    R"(^\s*[-*+]\s+\[([ xX])\]\s*(.*?)\s*(?:<!--\s*id:(\d+)\s*-->\s*)?$)");
+
+// Reads a markdown checklist file and closes every checked item that
+// carries an `<!-- id:N -->` comment, where N is the SQLite rowid captured
+// at export time (see todo_list::to_markdown_checklist_line). rowid is
+// stable across renumbering and repeated imports, unlike the visible task
+// number, so resolve_by_rowid always closes the item that was actually
+// checked, however many other completions have happened since export.
+// Checked items with no id comment (hand-written checklists) are reported
+// and skipped, since there's no reliable way to map them back to a row.
+int import_markdown_checklist(todo::todo_list_db& db, const std::string& file_path)
+{
+    std::ifstream in(file_path);
+    if (!in)
+    {
+        throw todo::todo_error(4, "Could not open import file: " + file_path);
+    }
+
+    int closed_count = 0;
+    std::string line;
+    while (std::getline(in, line))
+    {
+        std::smatch m;
+        if (!std::regex_match(line, m, checklist_line_re))
+            continue;
+
+        bool checked = (m[1].str() == "x" || m[1].str() == "X");
+        if (!checked)
+            continue;
+
+        if (!m[3].matched)
+        {
+            std::cerr << "Skipping checked item with no id comment: " << m[2].str() << std::endl;
+            continue;
+        }
+
+        long long row_id = std::stoll(m[3].str());
+        db.resolve_by_rowid(row_id);
+        ++closed_count;
+    }
+
+    return closed_count;
 }
 
 }  // namespace
@@ -69,7 +119,7 @@ int main (int argc, char * argv[]) {
 
     desc.add_options ()
     ("command",  po::value<std::string>()->required(),
-                 "* command:  'add', 'delete', `complete`")
+                 "* command:  'add', 'delete', 'complete', 'list', 'export', 'import'")
     ("arguments",  po::value<std::string>(),
                  "* command arguments")
     ("config,c", po::value<std::string>(&config_file)->default_value("multiple_sources.cfg"),
@@ -149,6 +199,27 @@ int main (int argc, char * argv[]) {
             {
                 std::cout << "Task #" << item_number << " removed from task list." << std::endl;
             }
+        }
+        if (to_upper(command) == "EXPORT")
+        {
+            std :: string arguments(vm["arguments"].as<std::string>());
+            todo_list_db db (db_file);
+            auto open_items = db.get_open_items();
+
+            std::ofstream out(arguments);
+            if (!out)
+            {
+                throw todo_error(4, "Could not open export file: " + arguments);
+            }
+            out << to_markdown_export(open_items, current_date_string());
+            std::cout << "Exported " << open_items.size() << " item(s) to " << arguments << std::endl;
+        }
+        if (to_upper(command) == "IMPORT")
+        {
+            std :: string arguments(vm["arguments"].as<std::string>());
+            todo_list_db db (db_file);
+            int closed_count = import_markdown_checklist(db, arguments);
+            std::cout << "Processed " << closed_count << " checked item(s) from " << arguments << std::endl;
         }
 
     }

@@ -15,6 +15,7 @@ I kick it old school.
 #include "todo_list_db.hpp"
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 
 namespace todo
 {
@@ -35,6 +36,24 @@ namespace todo
             os << i << std::endl;;
         }
         return os;
+    }
+
+    std::string to_markdown_checklist_line(const item_entry& ie)
+    {
+        std::ostringstream oss;
+        oss << "- [ ] " << ie.item_text << " <!-- id:" << ie.row_id << " -->";
+        return oss.str();
+    }
+
+    std::string to_markdown_export(const todo_list& l, const std::string& date_str)
+    {
+        std::ostringstream oss;
+        oss << "## Things to do for " << date_str << std::endl << std::endl;
+        for (const auto& item : l)
+        {
+            oss << to_markdown_checklist_line(item) << std::endl;
+        }
+        return oss.str();
     }
 
 }

@@ -39,6 +39,13 @@ namespace todo {
         int delete_list_entry(int item_number);
         int resolve_list_entry(int item_number);
 
+        // Resolves whatever item currently occupies this SQLite rowid, if
+        // it's still open. Unlike task_number, rowid never shifts, so this
+        // is the safe way to close an item captured by an earlier export
+        // (see todo_list::to_markdown_checklist_line). A no-op if the row
+        // doesn't exist or is already resolved.
+        int resolve_by_rowid(long long row_id);
+
         int create_db();
 
         todo_list get_open_items();

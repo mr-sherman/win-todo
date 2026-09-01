@@ -56,8 +56,8 @@ namespace todo
             item_text(t), item_number(tn), creation_time(ct), 
             is_resolved(false) {};
             
-        item_entry(int tn, std::string t, std::string ts) :
-            item_text(t), item_number(tn), is_resolved(false)
+        item_entry(int tn, std::string t, std::string ts, long long rid) :
+            item_text(t), item_number(tn), is_resolved(false), row_id(rid)
         {
 
             std::tm tm = {}; // Initialize to all zeros
@@ -70,15 +70,26 @@ namespace todo
 
         };
         friend std::ostream& operator<<(std::ostream& os, const item_entry& ie);
-        
+        friend std::string to_markdown_checklist_line(const item_entry& ie);
+
     private:
         std::string item_text;
         int item_number;
         std::chrono::time_point<std::chrono::system_clock> creation_time;
         std::chrono::time_point<std::chrono::system_clock> resolved_time;
         bool is_resolved;
+        long long row_id = 0; // SQLite rowid; stable across renumbering, unlike item_number
     };
 
     typedef std::vector<item_entry> todo_list;
     std::ostream& operator<<(std::ostream &os, const todo_list& l);
+
+    // Formats a single item as a GitHub-style markdown checklist line, e.g.
+    // "- [ ] buy milk <!-- id:3 -->". The trailing id comment is how
+    // `todo import` maps a checked box back to the right database row.
+    std::string to_markdown_checklist_line(const item_entry& ie);
+
+    // Formats the full "## Things to do for <date>" export document for a
+    // list of open items.
+    std::string to_markdown_export(const todo_list& l, const std::string& date_str);
 }
