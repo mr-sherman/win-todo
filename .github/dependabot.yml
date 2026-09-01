@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Keep the vcpkg-managed C++ dependencies (SQLite3, Boost) up to date.
+  - package-ecosystem: "vcpkg"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Keep the Actions used in CI (checkout, codeql-action, cache) up to date.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
