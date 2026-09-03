@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Clone vcpkg
         run: git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
