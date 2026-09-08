@@ -122,6 +122,8 @@ int main (int argc, char * argv[]) {
                  "* command:  'add', 'delete', 'complete', 'list', 'export', 'import'")
     ("arguments",  po::value<std::string>(),
                  "* command arguments")
+    ("tag,t", po::value<std::string>()->default_value(""),
+                 "tag/category: sets it on 'add', filters by it on 'list'/'export'")
     ("config,c", po::value<std::string>(&config_file)->default_value("multiple_sources.cfg"),
                   "name of a file of a configuration.");
 
@@ -164,15 +166,18 @@ int main (int argc, char * argv[]) {
         if (to_upper(command) == "ADD")
         {
             std :: string arguments(vm["arguments"].as<std::string>());
+            std :: string tag(vm["tag"].as<std::string>());
             todo::todo_list_db db (db_file);
             db.create_db();
-            db.create_list_entry(arguments);
+            db.create_list_entry(arguments, tag);
             std::cout << " ";
         }
         if (to_upper(command) == "LIST")
         {
+            std :: string tag(vm["tag"].as<std::string>());
             todo_list_db db (db_file);
-            auto open_items = db.get_open_items();
+            db.create_db();
+            auto open_items = db.get_open_items(tag);
             std::cout << open_items;
         }
         if (to_upper(command) == "COMPLETE")
@@ -203,8 +208,10 @@ int main (int argc, char * argv[]) {
         if (to_upper(command) == "EXPORT")
         {
             std :: string arguments(vm["arguments"].as<std::string>());
+            std :: string tag(vm["tag"].as<std::string>());
             todo_list_db db (db_file);
-            auto open_items = db.get_open_items();
+            db.create_db();
+            auto open_items = db.get_open_items(tag);
 
             std::ofstream out(arguments);
             if (!out)

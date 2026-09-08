@@ -56,8 +56,8 @@ namespace todo
             item_text(t), item_number(tn), creation_time(ct), 
             is_resolved(false) {};
             
-        item_entry(int tn, std::string t, std::string ts, long long rid) :
-            item_text(t), item_number(tn), is_resolved(false), row_id(rid)
+        item_entry(int tn, std::string t, std::string ts, long long rid, std::string tg = "") :
+            item_text(t), item_number(tn), is_resolved(false), row_id(rid), tag(tg)
         {
 
             std::tm tm = {}; // Initialize to all zeros
@@ -79,6 +79,7 @@ namespace todo
         std::chrono::time_point<std::chrono::system_clock> resolved_time;
         bool is_resolved;
         long long row_id = 0; // SQLite rowid; stable across renumbering, unlike item_number
+        std::string tag;
     };
 
     typedef std::vector<item_entry> todo_list;
