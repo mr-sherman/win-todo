@@ -1,0 +1,18 @@
+name: "CodeQL config"
+
+# Use the extended security query pack instead of the default suite.
+queries:
+  - uses: security-extended
+
+# Only analyze code we actually wrote. Boost and every other vcpkg-fetched
+# dependency get built into build/vcpkg_installed during the workflow, and
+# vcpkg itself is cloned into ./vcpkg — without this, CodeQL flags findings
+# in that vendored code as if it were ours.
+paths:
+  - src
+
+paths-ignore:
+  - build
+  - build-*
+  - vcpkg
+  - '**/vcpkg_installed/**'
