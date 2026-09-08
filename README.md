@@ -28,9 +28,19 @@ todo add <text>
 ```
 
 ```sh
+todo add <text> --tag <name>
+```
+Adds a task, optionally tagged with a category (`-t <name>` also works). Untagged tasks are left with no tag.
+
+```sh
 todo list
 ```
 Lists all your unresolved tasks.
+
+```sh
+todo list --tag <name>
+```
+Lists only unresolved tasks tagged `<name>`.
 
 ```sh
 todo complete <task number>
@@ -61,9 +71,14 @@ Writes all open items to `<file>` as a markdown checklist:
 The `<!-- id:N -->` comment is invisible in any markdown viewer/renderer — it's how `import` maps a checked box back to the right database row. `N` is the row's stable SQLite rowid, not the task number shown by `list` (which shifts around every time something is completed or deleted), so checking boxes and importing works correctly no matter how many other tasks have been completed in the meantime, and importing the same file twice is harmless (already-closed items are silently skipped).
 
 ```sh
+todo export <file> --tag <name>
+```
+Writes only items tagged `<name>` to `<file>`, same format as above.
+
+```sh
 todo import <file>
 ```
-Reads `<file>` as a markdown checklist and closes (marks complete) every item checked with `[x]` or `[X]`. Unchecked items are left alone. A checked item with no `<!-- id:N -->` comment (e.g. a checklist you wrote by hand rather than one `todo export` produced) can't be mapped to a database row, so it's reported to stderr and skipped rather than guessed at.
+Reads `<file>` as a markdown checklist and closes (marks complete) every item checked with `[x]` or `[X]`. Unchecked items are left alone. A checked item with no `<!-- id:N -->` comment (e.g. a checklist you wrote by hand rather than one `todo export` produced) can't be mapped to a database row, so it's reported to stderr and skipped rather than guessed at. `import` has no `--tag` option — it resolves each checked item by its row id, which is independent of tag, so a tag filter has nothing to add here.
 
 The intended workflow is `todo export todo.md`, check off what you finished in your editor, then `todo import todo.md`.
 

@@ -18,7 +18,7 @@ I kick it old school.
 
 namespace todo {
 
-    int todo_list_db::create_list_entry(const std::string &item_text)
+    int todo_list_db::create_list_entry(const std::string &item_text, const std::string &tag)
     {
         std::stringstream creation_time;
         int max_task = get_max_task_number() + 1;
@@ -27,14 +27,15 @@ namespace todo {
         std::tm* local_tm = std::localtime(&time_t_now); // Or std::gmtime for UTC
 
         creation_time << std::put_time(local_tm, "%Y-%m-%d %H:%M:%S");
-        
+
         sqlitepp::query q(_db);
 
-        q <<    "INSERT INTO todolist (task_number, task_text, created_time, completed_time) " <<
-                "VALUES ( "<< max_task << ", ?, \""<< creation_time.str().c_str() <<"\", NULL)";
-        
+        q <<    "INSERT INTO todolist (task_number, task_text, created_time, completed_time, tag) " <<
+                "VALUES ( "<< max_task << ", ?, \""<< creation_time.str().c_str() <<"\", NULL, ?)";
+
         q.bind(1, item_text);
-        
+        q.bind(2, tag);
+
         auto result = q.exec();
         if (result != SQLITE_OK)
             throw todo_error(result, "Error inserting new task into database");
@@ -66,15 +67,38 @@ namespace todo {
     int todo_list_db::create_db()
     {
         std::stringstream  cmd_st;
-        cmd_st  << "CREATE TABLE IF NOT EXISTS todolist" 
-                << "(task_number INT, " 
-                << "task_text TEXT, " 
-                << "created_time TEXT, " 
-                << "completed_time TEXT);" 
+        cmd_st  << "CREATE TABLE IF NOT EXISTS todolist"
+                << "(task_number INT, "
+                << "task_text TEXT, "
+                << "created_time TEXT, "
+                << "completed_time TEXT, "
+                << "tag TEXT);"
         ;
-        
+
         sqlitepp::query q(_db, cmd_st.str());
         int result = q.exec();
+
+        if (result != SQLITE_OK)
+            return result;
+
+        // Databases created before the tag column existed won't have it yet;
+        // add it here (no-op on a table just created by the statement above).
+        sqlitepp::query info(_db, "PRAGMA table_info(todolist)");
+        sqlitepp::result cols = info.store();
+        bool has_tag_column = false;
+        for (int i = 0; i < cols.num_rows(); ++i)
+        {
+            if (std::string(cols[i]["name"]) == "tag")
+            {
+                has_tag_column = true;
+                break;
+            }
+        }
+        if (!has_tag_column)
+        {
+            sqlitepp::query alter(_db, "ALTER TABLE todolist ADD COLUMN tag TEXT");
+            result = alter.exec();
+        }
 
         return result;
     }
@@ -94,22 +118,33 @@ namespace todo {
         
     }
 
-    todo_list todo_list_db::get_open_items()
+    todo_list todo_list_db::get_open_items(const std::string &tag_filter)
     {
-        std::string sel_cmd = "SELECT rowid, task_number, task_text, created_time FROM todolist WHERE task_number > 0";
+        std::string sel_cmd = "SELECT rowid, task_number, task_text, created_time, tag FROM todolist WHERE task_number > 0";
+        if (!tag_filter.empty())
+            sel_cmd += " AND tag = ?";
 
         sqlitepp::query q(_db, sel_cmd);
+        if (!tag_filter.empty())
+            q.bind(1, tag_filter);
         sqlitepp::result res = q.store();
 
         todo_list list;
         list.reserve(res.num_rows());
         for (int i = 0 ; i < res.num_rows(); ++i)
         {
+            // Rows written before the tag column existed store a SQL NULL
+            // here; sqlitepp stringifies NULL as the literal text "NULL",
+            // so that has to be turned into "no tag" explicitly.
+            const auto& tag_field = res[i]["tag"];
+            std::string tag = tag_field.is_null() ? std::string() : (std::string)tag_field;
+
             list.push_back(
                 item_entry( (int)res[i]["task_number"],
                             res[i]["task_text"],
                             res[i]["created_time"],
-                            (long long)res[i]["rowid"]));
+                            (long long)res[i]["rowid"],
+                            tag));
         }
         return list;
     }

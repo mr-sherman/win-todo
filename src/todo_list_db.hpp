@@ -35,7 +35,7 @@ namespace todo {
             }
         };
 
-        int create_list_entry(const std::string &item_text);
+        int create_list_entry(const std::string &item_text, const std::string &tag = "");
         int delete_list_entry(int item_number);
         int resolve_list_entry(int item_number);
 
@@ -48,7 +48,9 @@ namespace todo {
 
         int create_db();
 
-        todo_list get_open_items();
+        // With an empty tag_filter, returns all open items. Otherwise
+        // returns only items whose tag matches tag_filter exactly.
+        todo_list get_open_items(const std::string &tag_filter = "");
 
     private:
         int get_max_task_number();

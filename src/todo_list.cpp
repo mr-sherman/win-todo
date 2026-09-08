@@ -22,6 +22,8 @@ namespace todo
     std::ostream& operator<<(std::ostream& os, const item_entry& ie)
     {
         os << std::right << std::setw(6) << "  " << ie.item_number << "| " << std::left << std::setw(50) << ie.item_text;
+        if (!ie.tag.empty())
+            os << " [" << ie.tag << "]";
         return os;
     }
 
