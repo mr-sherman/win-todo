@@ -54,14 +54,17 @@ namespace todo
             item_text(t), item_number(tn), creation_time(ct), 
             is_resolved(false) {};
             
-        // ts is a created_time column, i.e. local wall-clock text written by
-        // current_timestamp_string(). An unparseable column leaves
-        // creation_time at the epoch rather than a garbage date.
-        item_entry(int tn, std::string t, std::string ts, long long rid, std::string tg = "") :
+        // ts and completed_ts are created_time/completed_time columns, i.e.
+        // local wall-clock text written by current_timestamp_string(). An
+        // unparseable created_time leaves creation_time at the epoch rather
+        // than a garbage date.
+        item_entry(int tn, std::string t, std::string ts, long long rid, std::string tg = "",
+            bool resolved = false, std::string completed_ts = "") :
             item_text(t), item_number(tn),
             creation_time(parse_local_timestamp(ts)
                               .value_or(std::chrono::system_clock::time_point{})),
-            is_resolved(false), row_id(rid), tag(tg)
+            is_resolved(resolved), row_id(rid), tag(tg),
+            completed_time_str(completed_ts)
         {};
         friend std::ostream& operator<<(std::ostream& os, const item_entry& ie);
         friend std::string to_markdown_checklist_line(const item_entry& ie);
@@ -74,6 +77,7 @@ namespace todo
         bool is_resolved;
         long long row_id = 0; // SQLite rowid; stable across renumbering, unlike item_number
         std::string tag;
+        std::string completed_time_str; // raw db timestamp; empty unless is_resolved
     };
 
     typedef std::vector<item_entry> todo_list;

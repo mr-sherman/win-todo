@@ -43,6 +43,11 @@ todo list --tag <name>
 Lists only unresolved tasks tagged `<name>`.
 
 ```sh
+todo list --all
+```
+Lists completed tasks too (`-a` also works), for the reporting use case `complete` keeps its data around for. Completed tasks show as `[x]` with their completion date instead of a task number, since they're no longer addressable by `complete`/`delete`. Combine with `--tag <name>` to filter while including completed tasks.
+
+```sh
 todo complete <task number>
 ```
 Finish the numbered task.
