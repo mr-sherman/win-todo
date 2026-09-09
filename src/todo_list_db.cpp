@@ -149,6 +149,41 @@ namespace todo {
         return list;
     }
 
+    todo_list todo_list_db::get_all_items(const std::string &tag_filter)
+    {
+        std::string sel_cmd = "SELECT rowid, task_number, task_text, created_time, tag, completed_time FROM todolist";
+        if (!tag_filter.empty())
+            sel_cmd += " WHERE tag = ?";
+        sel_cmd += " ORDER BY rowid";
+
+        sqlitepp::query q(_db, sel_cmd);
+        if (!tag_filter.empty())
+            q.bind(1, tag_filter);
+        sqlitepp::result res = q.store();
+
+        todo_list list;
+        list.reserve(res.num_rows());
+        for (int i = 0 ; i < res.num_rows(); ++i)
+        {
+            const auto& tag_field = res[i]["tag"];
+            std::string tag = tag_field.is_null() ? std::string() : (std::string)tag_field;
+
+            const auto& completed_field = res[i]["completed_time"];
+            bool resolved = !completed_field.is_null();
+            std::string completed_ts = resolved ? (std::string)completed_field : std::string();
+
+            list.push_back(
+                item_entry( (int)res[i]["task_number"],
+                            res[i]["task_text"],
+                            res[i]["created_time"],
+                            (long long)res[i]["rowid"],
+                            tag,
+                            resolved,
+                            completed_ts));
+        }
+        return list;
+    }
+
     int todo_list_db::resolve_by_rowid(long long row_id)
     {
         sqlitepp::query sel(_db);

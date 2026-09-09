@@ -124,6 +124,8 @@ int main (int argc, char * argv[]) {
                  "* command arguments")
     ("tag,t", po::value<std::string>()->default_value(""),
                  "tag/category: sets it on 'add', filters by it on 'list'/'export'")
+    ("all,a", po::bool_switch()->default_value(false),
+                 "with 'list': include completed tasks too")
     ("config,c", po::value<std::string>(&config_file)->default_value("multiple_sources.cfg"),
                   "name of a file of a configuration.");
 
@@ -175,10 +177,11 @@ int main (int argc, char * argv[]) {
         if (to_upper(command) == "LIST")
         {
             std :: string tag(vm["tag"].as<std::string>());
+            bool show_all = vm["all"].as<bool>();
             todo_list_db db (db_file);
             db.create_db();
-            auto open_items = db.get_open_items(tag);
-            std::cout << open_items;
+            auto items = show_all ? db.get_all_items(tag) : db.get_open_items(tag);
+            std::cout << items;
         }
         if (to_upper(command) == "COMPLETE")
         {

@@ -52,6 +52,10 @@ namespace todo {
         // returns only items whose tag matches tag_filter exactly.
         todo_list get_open_items(const std::string &tag_filter = "");
 
+        // Same as get_open_items, but also includes completed items (for
+        // 'list --all'). With an empty tag_filter, returns everything.
+        todo_list get_all_items(const std::string &tag_filter = "");
+
     private:
         int get_max_task_number();
 

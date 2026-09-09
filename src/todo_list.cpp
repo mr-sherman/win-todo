@@ -21,15 +21,20 @@ namespace todo
 {
     std::ostream& operator<<(std::ostream& os, const item_entry& ie)
     {
-        os << std::right << std::setw(6) << "  " << ie.item_number << "| " << std::left << std::setw(50) << ie.item_text;
+        if (ie.is_resolved)
+            os << std::right << std::setw(6) << "[x]" << "| " << std::left << std::setw(50) << ie.item_text;
+        else
+            os << std::right << std::setw(6) << "  " << ie.item_number << "| " << std::left << std::setw(50) << ie.item_text;
         if (!ie.tag.empty())
             os << " [" << ie.tag << "]";
+        if (ie.is_resolved && !ie.completed_time_str.empty())
+            os << " (completed " << ie.completed_time_str << ")";
         return os;
     }
 
     std::ostream& operator<<(std::ostream &os, const todo_list& l)
     {
-        os << "Current open items:"<< std::endl;
+        os << "Current items:"<< std::endl;
         os << "-------------------"<< std::endl;
         os << "Item # | Task      "<< std::endl;
         os << "-------------------"<< std::endl;
