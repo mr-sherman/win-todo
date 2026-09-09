@@ -99,7 +99,10 @@ This project uses CMake with a vcpkg manifest (`vcpkg.json`), so it builds the s
 #### Prerequisites
 
 - CMake 3.16+
-- A C++17 compiler (GCC, Clang, or MSVC)
+- A C++20 compiler with `<format>` and `<chrono>` time zone support:
+  MSVC 2022 (17.0+), GCC 13+, or Clang with libc++ 19+. The date/time
+  formatting uses `std::chrono::zoned_time`, which needs the C++20
+  time zone database.
 - [vcpkg](https://github.com/microsoft/vcpkg)
 - Ninja (optional but recommended on Linux/macOS)
 
