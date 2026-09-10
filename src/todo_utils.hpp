@@ -18,6 +18,7 @@ I kick it old school.
 #include <cctype>    // For ::toupper
 #include <chrono>
 #include <format>
+#include <iomanip>
 #include <optional>
 #include <sstream>
 
@@ -65,14 +66,35 @@ namespace todo
     // column back as the local wall-clock time it was written as. Returns
     // nullopt when the text does not parse, so the caller decides what a
     // malformed column means rather than silently getting a garbage date.
+    //
+    // Parses with std::get_time into a local std::tm rather than
+    // std::chrono::parse: libstdc++ hasn't implemented the C++20 chrono
+    // stream-parsing customization points yet, so std::chrono::parse fails
+    // to compile on GCC even though it works on MSVC. get_time only fills a
+    // caller-owned std::tm - it never touches std::localtime's shared static
+    // buffer, so this keeps the thread-safety property local_now() above is
+    // for.
     inline std::optional<std::chrono::system_clock::time_point>
     parse_local_timestamp(const std::string& text)
     {
-        std::chrono::local_seconds parsed;
+        std::tm tm{};
         std::istringstream in(text);
-        in >> std::chrono::parse("%Y-%m-%d %H:%M:%S", parsed);
+        in >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
         if (in.fail())
             return std::nullopt;
+
+        std::chrono::year_month_day ymd{
+            std::chrono::year{tm.tm_year + 1900},
+            std::chrono::month{static_cast<unsigned>(tm.tm_mon + 1)},
+            std::chrono::day{static_cast<unsigned>(tm.tm_mday)}};
+        if (!ymd.ok())
+            return std::nullopt;
+
+        std::chrono::local_seconds parsed =
+            std::chrono::local_days{ymd} +
+            std::chrono::hours{tm.tm_hour} +
+            std::chrono::minutes{tm.tm_min} +
+            std::chrono::seconds{tm.tm_sec};
 
         // A stored local time can be ambiguous (the repeated hour when DST
         // falls back) or nonexistent (the skipped hour when it springs
