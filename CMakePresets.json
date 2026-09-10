@@ -15,10 +15,21 @@
       "displayName": "Windows (Visual Studio + vcpkg)",
       "inherits": "vcpkg",
       "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
+      }
+    },
+    {
+      "name": "windows-static",
+      "displayName": "Windows (self-contained static exe)",
+      "inherits": "windows",
+      "binaryDir": "${sourceDir}/build-static",
+      "cacheVariables": {
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded$<$<CONFIG:Debug>:Debug>"
       }
     },
     {
@@ -34,6 +45,25 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows",
+      "displayName": "Windows Release",
+      "configurePreset": "windows",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-static",
+      "displayName": "Windows Release (static)",
+      "configurePreset": "windows-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "unix",
+      "displayName": "Linux/macOS Release",
+      "configurePreset": "unix"
     }
   ]
 }

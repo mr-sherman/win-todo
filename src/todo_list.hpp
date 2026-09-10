@@ -16,9 +16,7 @@ I kick it old school.
 #include <chrono>
 #include <vector>
 #include <iostream>
-#include <sstream>
-#include <iomanip>
-#include <ctime>
+#include "todo_utils.hpp"
 namespace todo
 {
     class todo_error
@@ -56,21 +54,18 @@ namespace todo
             item_text(t), item_number(tn), creation_time(ct), 
             is_resolved(false) {};
             
+        // ts and completed_ts are created_time/completed_time columns, i.e.
+        // local wall-clock text written by current_timestamp_string(). An
+        // unparseable created_time leaves creation_time at the epoch rather
+        // than a garbage date.
         item_entry(int tn, std::string t, std::string ts, long long rid, std::string tg = "",
             bool resolved = false, std::string completed_ts = "") :
-            item_text(t), item_number(tn), is_resolved(resolved), row_id(rid), tag(tg),
+            item_text(t), item_number(tn),
+            creation_time(parse_local_timestamp(ts)
+                              .value_or(std::chrono::system_clock::time_point{})),
+            is_resolved(resolved), row_id(rid), tag(tg),
             completed_time_str(completed_ts)
-        {
-
-            std::tm tm = {}; // Initialize to all zeros
-            std::istringstream ss(ts);
-            ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
-
-            auto to_time_t = std::mktime(&tm);
-
-            creation_time = std::chrono::system_clock::from_time_t(to_time_t);
-
-        };
+        {};
         friend std::ostream& operator<<(std::ostream& os, const item_entry& ie);
         friend std::string to_markdown_checklist_line(const item_entry& ie);
 

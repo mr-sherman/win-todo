@@ -13,25 +13,20 @@ I kick it old school.
 */
 
 #include "todo_list_db.hpp"
+#include "todo_utils.hpp"
 #include <sstream>
-#include <chrono>
 
 namespace todo {
 
     int todo_list_db::create_list_entry(const std::string &item_text, const std::string &tag)
     {
-        std::stringstream creation_time;
         int max_task = get_max_task_number() + 1;
-        auto now = std::chrono::system_clock::now();
-        std::time_t time_t_now = std::chrono::system_clock::to_time_t(now);
-        std::tm* local_tm = std::localtime(&time_t_now); // Or std::gmtime for UTC
-
-        creation_time << std::put_time(local_tm, "%Y-%m-%d %H:%M:%S");
+        const std::string creation_time = current_timestamp_string();
 
         sqlitepp::query q(_db);
 
         q <<    "INSERT INTO todolist (task_number, task_text, created_time, completed_time, tag) " <<
-                "VALUES ( "<< max_task << ", ?, \""<< creation_time.str().c_str() <<"\", NULL, ?)";
+                "VALUES ( "<< max_task << ", ?, \""<< creation_time.c_str() <<"\", NULL, ?)";
 
         q.bind(1, item_text);
         q.bind(2, tag);
@@ -202,17 +197,12 @@ namespace todo {
 
     int todo_list_db::resolve_list_entry(int task_number)
     {
-        std::stringstream resolved_time;
-        auto now = std::chrono::system_clock::now();
-        std::time_t time_t_now = std::chrono::system_clock::to_time_t(now);
-        std::tm* local_tm = std::localtime(&time_t_now); // Or std::gmtime for UTC
-
-        resolved_time << std::put_time(local_tm, "%Y-%m-%d %H:%M:%S");
+        const std::string resolved_time = current_timestamp_string();
 
         sqlitepp::query q(_db);
         //update the completed time field
         q <<    "UPDATE todolist SET completed_time = \"" << 
-                resolved_time.str().c_str() << "\", task_number=0" << " WHERE task_number = " << 
+                resolved_time.c_str() << "\", task_number=0" << " WHERE task_number = " << 
                 task_number;
         
         auto result = q.exec();

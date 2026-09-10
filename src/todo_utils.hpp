@@ -16,8 +16,10 @@ I kick it old school.
 #include <string>
 #include <algorithm> // For std::transform
 #include <cctype>    // For ::toupper
-#include <ctime>
+#include <chrono>
+#include <format>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 
 namespace todo
@@ -31,12 +33,74 @@ namespace todo
         return up_str;
     }
 
+    // Local wall-clock "now", truncated to whole seconds.
+    //
+    // These use std::chrono's time zone database instead of std::localtime.
+    // std::localtime hands back a pointer to a single shared static std::tm,
+    // so two threads calling it race, and any later call clobbers an earlier
+    // caller's result. std::chrono::zoned_time returns a value instead.
+    //
+    // Truncating to seconds matters: system_clock::now() carries sub-second
+    // precision, and formatting that with %S would emit fractional seconds
+    // ("14:23:05.1234567"), which is not the format stored in the database.
+    inline std::chrono::zoned_time<std::chrono::seconds> local_now()
+    {
+        return std::chrono::zoned_time{
+            std::chrono::current_zone(),
+            std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now())};
+    }
+
     inline std::string current_date_string()
     {
-        std::time_t t = std::time(nullptr);
-        std::tm* local_tm = std::localtime(&t);
-        std::ostringstream oss;
-        oss << std::put_time(local_tm, "%Y-%m-%d");
-        return oss.str();
+        return std::format("{:%Y-%m-%d}", local_now());
+    }
+
+    // "YYYY-MM-DD HH:MM:SS", the format used for the created_time and
+    // completed_time columns.
+    inline std::string current_timestamp_string()
+    {
+        return std::format("{:%Y-%m-%d %H:%M:%S}", local_now());
+    }
+
+    // The inverse of current_timestamp_string(): reads a "YYYY-MM-DD HH:MM:SS"
+    // column back as the local wall-clock time it was written as. Returns
+    // nullopt when the text does not parse, so the caller decides what a
+    // malformed column means rather than silently getting a garbage date.
+    //
+    // Parses with std::get_time into a local std::tm rather than
+    // std::chrono::parse: libstdc++ hasn't implemented the C++20 chrono
+    // stream-parsing customization points yet, so std::chrono::parse fails
+    // to compile on GCC even though it works on MSVC. get_time only fills a
+    // caller-owned std::tm - it never touches std::localtime's shared static
+    // buffer, so this keeps the thread-safety property local_now() above is
+    // for.
+    inline std::optional<std::chrono::system_clock::time_point>
+    parse_local_timestamp(const std::string& text)
+    {
+        std::tm tm{};
+        std::istringstream in(text);
+        in >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+        if (in.fail())
+            return std::nullopt;
+
+        std::chrono::year_month_day ymd{
+            std::chrono::year{tm.tm_year + 1900},
+            std::chrono::month{static_cast<unsigned>(tm.tm_mon + 1)},
+            std::chrono::day{static_cast<unsigned>(tm.tm_mday)}};
+        if (!ymd.ok())
+            return std::nullopt;
+
+        std::chrono::local_seconds parsed =
+            std::chrono::local_days{ymd} +
+            std::chrono::hours{tm.tm_hour} +
+            std::chrono::minutes{tm.tm_min} +
+            std::chrono::seconds{tm.tm_sec};
+
+        // A stored local time can be ambiguous (the repeated hour when DST
+        // falls back) or nonexistent (the skipped hour when it springs
+        // forward). The plain to_sys() throws on both; choose::earliest
+        // resolves them instead, since a timestamp already on disk should
+        // always read back as *some* instant.
+        return std::chrono::current_zone()->to_sys(parsed, std::chrono::choose::earliest);
     }
 }

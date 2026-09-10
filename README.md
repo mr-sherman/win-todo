@@ -104,7 +104,10 @@ This project uses CMake with a vcpkg manifest (`vcpkg.json`), so it builds the s
 #### Prerequisites
 
 - CMake 3.16+
-- A C++17 compiler (GCC, Clang, or MSVC)
+- A C++20 compiler with `<format>` and `<chrono>` time zone support:
+  MSVC 2022 (17.0+), GCC 13+, or Clang with libc++ 19+. The date/time
+  formatting uses `std::chrono::zoned_time`, which needs the C++20
+  time zone database.
 - [vcpkg](https://github.com/microsoft/vcpkg)
 - Ninja (optional but recommended on Linux/macOS)
 
@@ -132,16 +135,38 @@ cmake --build build
 ./build/todo list
 ```
 
-**Windows (Developer PowerShell / cmd, with Visual Studio installed):**
+**Windows (Developer PowerShell, with Visual Studio installed):**
 
 ```powershell
-cmake -S . -B build ^
+cmake -S . -B build `
   -DCMAKE_TOOLCHAIN_FILE=<path-to-vcpkg>\scripts\buildsystems\vcpkg.cmake
 cmake --build build --config Release
 .\build\Release\todo.exe list
 ```
 
-A `CMakePresets.json` is also included with `windows` and `unix` presets — set the `VCPKG_ROOT` environment variable and run `cmake --preset windows` (or `unix`) instead of typing out the toolchain file path each time. `CMakeUserPresets.json` is for your own machine-local overrides and is gitignored.
+The line continuation above is PowerShell's backtick (`` ` ``). In `cmd` use `^` instead, or just put the whole `cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=... ` invocation on one line.
+
+`--config Release` belongs on the `cmake --build` step, not on the configure step — Visual Studio is a multi-config generator, so the configuration is chosen at build time. Passing `--config` to the configure command fails with `CMake Error: Unknown argument --config`.
+
+#### Using the presets instead
+
+A `CMakePresets.json` is included with matching configure and build presets named `windows` and `unix`. Set the `VCPKG_ROOT` environment variable, then:
+
+```powershell
+$env:VCPKG_ROOT = "<path-to-vcpkg>"
+cmake --preset windows
+cmake --build --preset windows
+.\build\Release\todo.exe list
+```
+
+```sh
+export VCPKG_ROOT=<path-to-vcpkg>
+cmake --preset unix
+cmake --build --preset unix
+./build/todo list
+```
+
+The build presets already select the Release configuration, so there's no `--config` to place by hand. `CMakeUserPresets.json` is for your own machine-local overrides and is gitignored.
 
 #### Installing
 
