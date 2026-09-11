@@ -90,8 +90,6 @@ int import_markdown_checklist(todo::todo_list_db& db, const std::string& file_pa
 int main (int argc, char * argv[]) {
     std::string config_file, db_file;
 
-    int max_task_length = 0;
-
     fs::path home = user_home_directory();
     if (home.empty())
     {
@@ -110,11 +108,8 @@ int main (int argc, char * argv[]) {
 
     po::options_description config("Configuration");
         config.add_options()
-            ("db_file", po::value<std::string>(&db_file)->default_value(""), 
-                  "database file")
-            ("max_task_length", 
-                 po::value< int >()->default_value(30), 
-                 "max task string length")
+            ("db_file", po::value<std::string>(&db_file)->default_value(""),
+                  "database file to use instead of ~/.todo/todo.db")
             ;
 
     desc.add_options ()
@@ -126,9 +121,13 @@ int main (int argc, char * argv[]) {
                  "tag/category: sets it on 'add', updates it on 'edit', filters by it on 'list'/'export'")
     ("all,a", po::bool_switch()->default_value(false),
                  "with 'list': include completed tasks too")
-    ("config,c", po::value<std::string>(&config_file)->default_value("multiple_sources.cfg"),
-                  "name of a file of a configuration.");
+    ("config,c", po::value<std::string>(&config_file)->default_value(cfg_path.string()),
+                  "configuration file to read settings from");
 
+
+    // Without this the Configuration options are declared but never
+    // registered, so --db_file is rejected as an unrecognised option.
+    desc.add(config);
 
     // Positional arguments don't need a parameter flag
     po::positional_options_description pos_desc;
@@ -142,6 +141,16 @@ int main (int argc, char * argv[]) {
                                                               options(desc).
                                                               positional(pos_desc).
                                                               run(), vm);
+        // Settings not given on the command line fall back to the config
+        // file. po::store keeps the first value it sees for an option, so
+        // storing the command line first is what makes it win here.
+        // Read the name out of vm rather than config_file: po::store does
+        // not assign to bound variables, so config_file is still empty
+        // until po::notify below.
+        std::ifstream cfg_in(vm["config"].as<std::string>());
+        if (cfg_in)
+            po::store(po::parse_config_file(cfg_in, config), vm);
+
         po::notify(vm);
 
     } catch (po::error& e) {
@@ -183,7 +192,8 @@ int main (int argc, char * argv[]) {
 
     try
     {
-        db_file = default_db_path.string();
+        if (db_file.empty())
+            db_file = default_db_path.string();
         if (to_upper(command) == "ADD")
         {
             std :: string arguments(joined_arguments());
@@ -257,6 +267,9 @@ int main (int argc, char * argv[]) {
         }
         if (to_upper(command) == "EXPORT")
         {
+            if (arg_tokens.empty())
+                throw todo_error(2, "EXPORT requires an output file path");
+
             std :: string arguments(joined_arguments());
             std :: string tag(vm["tag"].as<std::string>());
             todo_list_db db (db_file);
@@ -273,6 +286,9 @@ int main (int argc, char * argv[]) {
         }
         if (to_upper(command) == "IMPORT")
         {
+            if (arg_tokens.empty())
+                throw todo_error(2, "IMPORT requires an input file path");
+
             std :: string arguments(joined_arguments());
             todo_list_db db (db_file);
             int closed_count = import_markdown_checklist(db, arguments);
