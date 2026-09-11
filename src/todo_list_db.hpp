@@ -17,6 +17,7 @@ I kick it old school.
 #include <string>
 #include <vector>
 #include <chrono>
+#include <optional>
 #include "sqlitepp.hpp"
 #include "todo_list.hpp"
 #include <memory>
@@ -38,6 +39,14 @@ namespace todo {
         int create_list_entry(const std::string &item_text, const std::string &tag = "");
         int delete_list_entry(int item_number);
         int resolve_list_entry(int item_number);
+
+        // Updates an open task's text and/or tag: each of new_text/new_tag
+        // is left alone (std::nullopt) or replaced; pass an empty string
+        // for new_tag to clear it. Like complete/delete, this only reaches
+        // items by their current task_number, so it has no effect on
+        // completed tasks. A no-op (returns 0) if neither is given.
+        int edit_list_entry(int task_number, const std::optional<std::string> &new_text,
+                             const std::optional<std::string> &new_tag = std::nullopt);
 
         // Resolves whatever item currently occupies this SQLite rowid, if
         // it's still open. Unlike task_number, rowid never shifts, so this
