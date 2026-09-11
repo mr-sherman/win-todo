@@ -59,6 +59,21 @@ Delete the task.
 
 Note that there is a difference between `complete` and `delete`. Complete will keep the task in the database as complete for reporting purposes. Delete will remove it from the database and cannot be retrieved later for reporting purposes. Complete should be used for tasks that are done. Delete should be used for tasks that are abandoned.
 
+```sh
+todo edit <task number> <text>
+```
+Replaces the task's text. `<text>` can be multiple words without quoting them. Like `complete`/`delete`, this only reaches open tasks by task number, so a completed task can't be edited.
+
+```sh
+todo edit <task number> <text> --tag <name>
+```
+Also updates the tag. Omit `--tag` to leave the existing tag alone; pass `--tag ""` to clear it.
+
+```sh
+todo edit <task number> --tag <name>
+```
+Updates only the tag, leaving the task's text as-is. `<text>` and `--tag` are each optional on `edit`, but at least one is required.
+
 ### Export / Import
 
 ```sh

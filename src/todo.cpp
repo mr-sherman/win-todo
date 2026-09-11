@@ -119,11 +119,11 @@ int main (int argc, char * argv[]) {
 
     desc.add_options ()
     ("command",  po::value<std::string>()->required(),
-                 "* command:  'add', 'delete', 'complete', 'list', 'export', 'import'")
-    ("arguments",  po::value<std::string>(),
+                 "* command:  'add', 'delete', 'complete', 'edit', 'list', 'export', 'import'")
+    ("arguments",  po::value<std::vector<std::string>>()->multitoken(),
                  "* command arguments")
     ("tag,t", po::value<std::string>()->default_value(""),
-                 "tag/category: sets it on 'add', filters by it on 'list'/'export'")
+                 "tag/category: sets it on 'add', updates it on 'edit', filters by it on 'list'/'export'")
     ("all,a", po::bool_switch()->default_value(false),
                  "with 'list': include completed tasks too")
     ("config,c", po::value<std::string>(&config_file)->default_value("multiple_sources.cfg"),
@@ -162,12 +162,31 @@ int main (int argc, char * argv[]) {
     }
     std :: string command(vm["command"].as<std::string>());
 
+    // "arguments" collects every positional token after the command, since
+    // 'edit' needs both a task number and (possibly multi-word) new text.
+    // Kept as a vector rather than one std::string so unquoted multi-word
+    // text can be typed without wrapping it in quotes.
+    std::vector<std::string> arg_tokens =
+        vm.count("arguments") ? vm["arguments"].as<std::vector<std::string>>() : std::vector<std::string>();
+
+    auto joined_arguments = [&arg_tokens](std::size_t start = 0) -> std::string
+    {
+        std::ostringstream oss;
+        for (std::size_t i = start; i < arg_tokens.size(); ++i)
+        {
+            if (i > start)
+                oss << ' ';
+            oss << arg_tokens[i];
+        }
+        return oss.str();
+    };
+
     try
     {
         db_file = default_db_path.string();
         if (to_upper(command) == "ADD")
         {
-            std :: string arguments(vm["arguments"].as<std::string>());
+            std :: string arguments(joined_arguments());
             std :: string tag(vm["tag"].as<std::string>());
             todo::todo_list_db db (db_file);
             db.create_db();
@@ -185,10 +204,11 @@ int main (int argc, char * argv[]) {
         }
         if (to_upper(command) == "COMPLETE")
         {
-            std :: string arguments(vm["arguments"].as<std::string>());
+            if (arg_tokens.empty())
+                throw todo_error(2, "COMPLETE requires a task number");
             todo_list_db db (db_file);
             int item_number;
-            std::istringstream ( arguments ) >> item_number;
+            std::istringstream ( arg_tokens[0] ) >> item_number;
             auto result = db.resolve_list_entry(item_number);
             if (result == 0)
             {
@@ -197,10 +217,11 @@ int main (int argc, char * argv[]) {
         }
         if (to_upper(command)== "DELETE")
         {
-            std :: string arguments(vm["arguments"].as<std::string>());
+            if (arg_tokens.empty())
+                throw todo_error(2, "DELETE requires a task number");
             todo_list_db db (db_file);
             int item_number;
-            std::istringstream ( arguments ) >> item_number;
+            std::istringstream ( arg_tokens[0] ) >> item_number;
 
             auto result = db.delete_list_entry(item_number);
             if (result == 0)
@@ -208,9 +229,35 @@ int main (int argc, char * argv[]) {
                 std::cout << "Task #" << item_number << " removed from task list." << std::endl;
             }
         }
+        if (to_upper(command) == "EDIT")
+        {
+            if (arg_tokens.empty())
+                throw todo_error(2, "EDIT requires a task number");
+
+            int item_number;
+            std::istringstream ( arg_tokens[0] ) >> item_number;
+
+            std::optional<std::string> new_text;
+            if (arg_tokens.size() > 1)
+                new_text = joined_arguments(1);
+
+            std::optional<std::string> new_tag;
+            if (!vm["tag"].defaulted())
+                new_tag = vm["tag"].as<std::string>();
+
+            if (!new_text && !new_tag)
+                throw todo_error(2, "EDIT requires new task text and/or --tag");
+
+            todo_list_db db (db_file);
+            auto result = db.edit_list_entry(item_number, new_text, new_tag);
+            if (result == 0)
+            {
+                std::cout << "Task #" << item_number << " updated." << std::endl;
+            }
+        }
         if (to_upper(command) == "EXPORT")
         {
-            std :: string arguments(vm["arguments"].as<std::string>());
+            std :: string arguments(joined_arguments());
             std :: string tag(vm["tag"].as<std::string>());
             todo_list_db db (db_file);
             db.create_db();
@@ -226,7 +273,7 @@ int main (int argc, char * argv[]) {
         }
         if (to_upper(command) == "IMPORT")
         {
-            std :: string arguments(vm["arguments"].as<std::string>());
+            std :: string arguments(joined_arguments());
             todo_list_db db (db_file);
             int closed_count = import_markdown_checklist(db, arguments);
             std::cout << "Processed " << closed_count << " checked item(s) from " << arguments << std::endl;

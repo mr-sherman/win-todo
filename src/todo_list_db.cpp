@@ -59,6 +59,34 @@ namespace todo {
     
     }
 
+    int todo_list_db::edit_list_entry(int task_number, const std::optional<std::string> &new_text,
+                                       const std::optional<std::string> &new_tag)
+    {
+        if (!new_text && !new_tag)
+            return 0;
+
+        sqlitepp::query q(_db);
+        q << "UPDATE todolist SET ";
+        if (new_text)
+            q << "task_text = ?";
+        if (new_text && new_tag)
+            q << ", ";
+        if (new_tag)
+            q << "tag = ?";
+        q << " WHERE task_number = " << task_number;
+
+        int param = 1;
+        if (new_text)
+            q.bind(param++, *new_text);
+        if (new_tag)
+            q.bind(param++, *new_tag);
+
+        auto result = q.exec();
+        if (result != SQLITE_OK)
+            throw todo_error(result, "Error updating task in database");
+        return 0;
+    }
+
     int todo_list_db::create_db()
     {
         std::stringstream  cmd_st;
