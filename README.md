@@ -17,7 +17,32 @@ A `.todo` folder is created in your home directory the first time you run the ap
 - Windows: `%USERPROFILE%\.todo\`
 - Linux/macOS: `$HOME/.todo/`
 
-The SQLite database (`todo.db`) lives there. Right now, config options are rather minimal, but as this project may grow, the configuration options may grow. I've built this application for change.
+The SQLite database (`todo.db`) lives there, alongside an optional config file (`todo.cfg`). Right now, config options are rather minimal, but as this project may grow, the configuration options may grow. I've built this application for change.
+
+### Configuration
+
+`todo.cfg` is read automatically if it exists. It takes `key=value` lines:
+
+```ini
+db_file=D:\work\work-todo.db
+```
+
+| Setting | Effect |
+| --- | --- |
+| `db_file` | Use this database instead of `~/.todo/todo.db` |
+
+Every setting is also a command-line option, and the command line wins over the config file:
+
+```sh
+todo --db_file D:\work\work-todo.db list
+```
+
+Point `-c <file>` at a different config file to keep separate lists:
+
+```sh
+todo -c ~/.todo/work.cfg add "ship the release"
+```
+
 
 ## Getting Started
 

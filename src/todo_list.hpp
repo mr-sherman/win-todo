@@ -38,8 +38,6 @@ namespace todo
         std::string _str;
     };
 
-    const int TASK_STR_WIDTH = 1;
-
     class item_entry
     {
     public:
